@@ -1,6 +1,7 @@
 import { getQueriesForElement, prettyDOM, configure as configureDTL } from '@testing-library/dom'
-import { h, hydrate as preactHydrate, render as preactRender } from 'preact'
-import { act, setupRerender } from 'preact/test-utils'
+import { h, hydrate as preactHydrate, render as preactRender, createRef } from 'preact'
+import { useEffect } from 'preact/hooks'
+import { act } from 'preact/test-utils'
 
 configureDTL({
   asyncWrapper: async cb => {
@@ -106,5 +107,33 @@ function cleanup () {
   mountedContainers.forEach(cleanupAtContainer)
 }
 
+function renderHook (renderCallback, options) {
+  const { initialProps, wrapper } = (options || {})
+  const result = createRef()
+
+  function TestComponent ({ renderCallbackProps }) {
+    const pendingResult = renderCallback(renderCallbackProps)
+
+    useEffect(() => {
+      result.current = pendingResult
+    })
+
+    return null
+  }
+
+  const { rerender: baseRerender, unmount } = render(
+    <TestComponent renderCallbackProps={initialProps} />,
+    { wrapper }
+  )
+
+  function rerender (rerenderCallbackProps) {
+    return baseRerender(
+      <TestComponent renderCallbackProps={rerenderCallbackProps} />
+    )
+  }
+
+  return { result, rerender, unmount }
+}
+
 export * from '@testing-library/dom'
-export { render, cleanup, act }
+export { render, cleanup, act, renderHook }
